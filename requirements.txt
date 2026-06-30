@@ -1,6 +1,8 @@
 Flask==3.0.0
 Werkzeug==3.0.0
-ultralytics==8.0.228
+
+ultralytics==8.4.82
+
 easyocr==1.7.1
 opencv-python-headless==4.8.1.78
 numpy==1.26.2
