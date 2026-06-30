@@ -1,0 +1,41 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Dataset (terlalu besar untuk repo)
+data/
+
+# Training runs (terlalu besar)
+runs/
+
+# Temporary test files
+test_*.py
+draw_*.jpg
+scratch_*.jpg
+temp_*.jpg
+
+# Base model (tidak dipakai di production)
+yolov8n.pt
+
+# IDE / OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Misc scripts (tidak diperlukan untuk hosting)
+auto_annotate.py
+draw_bboxes.py
+draw_bboxes_34.py
+inspect_labels.py
+inspect_labels_1.py
+inspect_labels_50.py
+read_all_labels.py
+retrain.py
+main.py

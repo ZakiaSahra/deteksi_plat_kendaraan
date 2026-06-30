@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plate Detection Dashboard</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f97316;
+            --border-color: #334155;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+        }
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-main);
+        }
+        .logo-icon {
+            background-color: var(--accent-cyan);
+            color: white;
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; font-weight: bold; margin-right: 1rem;
+        }
+        .header-title h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+        .header-title span { color: var(--text-muted); font-size: 0.85rem; }
+        
+        /* Layout */
+        .container { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+        
+        /* Stats Row */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;
+        }
+        .stat-card {
+            background-color: var(--bg-card);
+            border-radius: 12px; padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::after {
+            content: ''; position: absolute; bottom: 0; left: 1.5rem; right: 1.5rem; height: 3px; border-radius: 3px;
+        }
+        .stat-card:nth-child(1)::after { background-color: var(--accent-blue); }
+        .stat-card:nth-child(2)::after { background-color: var(--accent-cyan); }
+        .stat-card:nth-child(3)::after { background-color: var(--accent-orange); }
+        .stat-card:nth-child(4)::after { background-color: var(--accent-green); }
+        
+        .stat-info h3 { margin: 0; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+        .stat-info .value { font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem; }
+        .stat-icon {
+            width: 45px; height: 45px; border-radius: 12px;
+            display: flex; justify-content: center; align-items: center; font-size: 1.25rem;
+        }
+        .icon-blue { background-color: var(--accent-blue); color: white; }
+        .icon-cyan { background-color: var(--accent-cyan); color: white; }
+        .icon-orange { background-color: var(--accent-orange); color: white; }
+        .icon-green { background-color: var(--accent-green); color: white; }
+        
+        /* Tabs */
+        .tabs {
+            display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem;
+        }
+        .tab {
+            padding: 0.75rem 0; color: var(--text-muted); cursor: pointer; font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .tab.active { color: var(--accent-cyan); border-bottom: 2px solid var(--accent-cyan); }
+        .tab:hover:not(.active) { color: var(--text-main); }
+        
+        /* Main Grid */
+        .main-grid {
+            display: grid; grid-template-columns: 2.5fr 1fr; gap: 1.5rem;
+        }
+        
+        /* Detection Panel */
+        .detect-panel {
+            background-color: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem;
+        }
+        
+        /* Image Viewer with Bbox */
+        .image-viewer {
+            position: relative; width: 100%; border-radius: 8px; overflow: hidden; background-color: #000;
+            min-height: 300px; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color);
+        }
+        .image-viewer img {
+            max-width: 100%; max-height: 400px; object-fit: contain; display: block;
+        }
+        .bbox {
+            position: absolute; border: 2px solid var(--accent-cyan); background-color: rgba(6, 182, 212, 0.1);
+            pointer-events: none; display: none;
+        }
+        .bbox-label {
+            position: absolute; top: -25px; left: -2px; background-color: var(--accent-cyan);
+            color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px 4px 0 0;
+        }
+        
+        /* Details Panel */
+        .details-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+        .plate-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .plate-header .label { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+        .plate-header .plate-number { font-size: 2.25rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 2px; margin: 0; }
+        .badge-detected {
+            background-color: rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;
+        }
+        
+        .info-box {
+            background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;
+        }
+        .info-box.wide { grid-column: 1 / -1; }
+        .info-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+        .info-label { color: var(--text-muted); font-size: 0.85rem; }
+        .info-value-right { color: var(--accent-cyan); font-weight: 600; font-size: 0.85rem; }
+        .info-content { font-size: 1.1rem; font-weight: 700; }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .timestamp { color: var(--text-muted); font-size: 0.85rem; margin-top: auto; }
+        
+        /* Action Buttons */
+        .actions-row { display: flex; gap: 1rem; margin-top: 1.5rem; }
+        .btn-outline {
+            flex: 1; background: transparent; border: 1px solid var(--border-color); color: var(--text-main);
+            padding: 0.75rem; border-radius: 8px; cursor: pointer; font-weight: 500; text-align: center;
+        }
+        .btn-outline:hover { background-color: rgba(255,255,255,0.05); }
+        
+        /* Sidebar */
+        .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
+        .side-card { background-color: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); padding: 1.5rem; }
+        .side-card h3 { margin: 0 0 1.5rem 0; font-size: 1rem; font-weight: 600; }
+        
+        .recent-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .recent-plate { color: var(--accent-cyan); font-weight: 700; font-size: 0.95rem; }
+        .recent-time { color: var(--text-muted); font-size: 0.75rem; margin-top: 2px; }
+        .recent-conf { font-weight: 600; font-size: 0.85rem; }
+        
+        .status-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; }
+        .status-label { color: var(--text-muted); }
+        .status-val { font-weight: 600; color: var(--accent-cyan); }
+        .progress-bg { width: 100%; height: 6px; background-color: var(--bg-main); border-radius: 3px; margin-bottom: 1.5rem; overflow: hidden; }
+        .progress-bar { height: 100%; background-color: var(--accent-cyan); }
+        
+        /* Upload Form Wrapper */
+        .upload-wrapper { position: absolute; top:0;left:0;right:0;bottom:0; display:flex; justify-content:center; align-items:center; z-index:10; background: rgba(0,0,0,0.5); border-radius: 8px;}
+        .upload-btn { background: var(--accent-blue); color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;}
+        .loader { display: none; color: white; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-icon">⚡</div>
+        <div class="header-title">
+            <h1>Plate Detection</h1>
+            <span>YOLO + OCR System</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-title">
+        <h1>Deteksi Plat Nomor Kendaraan</h1>
+        </div>
+        
+        
+
+        <!-- Tabs dihapus -->
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            
+            <!-- Left Panel (Detect) -->
+            <div>
+                <div class="detect-panel">
+                    
+                    <!-- Image Area -->
+                    <div class="image-viewer" id="imageViewer">
+                        <img id="mainImage" src="" alt="">
+                        <div class="bbox" id="bboxOverlay">
+                            <div class="bbox-label" id="bboxLabel">98%</div>
+                        </div>
+                        <div class="upload-wrapper" id="uploadWrapper">
+                            <form id="uploadForm">
+                                <input type="file" id="imageInput" accept="image/*" style="display:none">
+                                <button type="button" class="upload-btn" onclick="document.getElementById('imageInput').click()">Select Image</button>
+                            </form>
+                            <div class="loader" id="loader">Processing...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Details Area -->
+                    <div class="details-panel">
+                        <div class="plate-header">
+                            <div>
+                                <div class="label">Plate Number</div>
+                                <h2 class="plate-number" id="txtPlateNumber">-</h2>
+                            </div>
+                            <div class="badge-detected">✔ Detected</div>
+                        </div>
+                        
+                        <div class="info-box wide">
+                            <div class="info-header">
+                                <span class="info-label">OCR Recognition</span>
+                                <span class="info-value-right" id="txtConf">0% confidence</span>
+                            </div>
+                            <div class="info-content" id="txtRawOcr">-</div>
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-box">
+                                <div class="info-label" style="margin-bottom: 5px;">Status Plat</div>
+                                <div class="info-content" id="txtStatus">-</div>
+                            </div>
+                            <div class="info-box">
+                                <div class="info-label" style="margin-bottom: 5px;">Processing Time</div>
+                                <div class="info-content" id="txtProcTime">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="timestamp" id="txtTimestamp"></div>
+                    </div>
+                    
+                </div>
+                
+                <div class="actions-row">
+                    <button class="btn-outline">Download</button>
+                    <button class="btn-outline">Export</button>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="sidebar">
+                
+                <div class="side-card">
+                    <h3>Recent Detections</h3>
+                    <div id="recentList">
+                        <div class="recent-item" style="opacity:0.5">
+                            <div>
+                                <div class="recent-plate">-</div>
+                                <div class="recent-time">-</div>
+                            </div>
+                            <div class="recent-conf">0%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="side-card">
+                    <h3>System Status</h3>
+                    
+                    <div class="status-row">
+                        <span class="status-label">Model Load</span>
+                        <span class="status-val">Ready</span>
+                    </div>
+                    <div class="progress-bg"><div class="progress-bar" style="width: 100%"></div></div>
+                    
+                    <div class="status-row">
+                        <span class="status-label">Accuracy (mAP50)</span>
+                        <span class="status-val">93.2%</span>
+                    </div>
+                    <div class="progress-bg"><div class="progress-bar" style="width: 93.2%"></div></div>
+                    
+                    <div class="status-row">
+                        <span class="status-label">Avg Speed</span>
+                        <span class="status-val" id="sbAvgSpeed">245ms</span>
+                    </div>
+                    <div class="progress-bg"><div class="progress-bar" style="width: 80%"></div></div>
+                </div>
+                
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const uploadWrapper = document.getElementById('uploadWrapper');
+        const uploadForm = document.getElementById('uploadForm');
+        const loader = document.getElementById('loader');
+        
+        const mainImage = document.getElementById('mainImage');
+        const bboxOverlay = document.getElementById('bboxOverlay');
+        const bboxLabel = document.getElementById('bboxLabel');
+        
+        let totalCount = 1;
+
+        imageInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show loader
+            uploadWrapper.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            uploadForm.style.display = 'none';
+            loader.style.display = 'block';
+            bboxOverlay.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/predict', { method: 'POST', body: formData });
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error('Server returned ' + response.status + ': ' + text.substring(0, 50));
+                }
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Update Image
+                    mainImage.src = data.full_image;
+                    mainImage.style.display = 'block';
+                    
+                    if(document.getElementById('txtProcTime')) document.getElementById('txtProcTime').innerText = data.processing_time + 'ms';
+                    if(document.getElementById('valAvgTime')) document.getElementById('valAvgTime').innerText = data.processing_time + 'ms';
+                    if(document.getElementById('sbAvgSpeed')) document.getElementById('sbAvgSpeed').innerText = data.processing_time + 'ms';
+                    
+                    const now = new Date();
+                    if(document.getElementById('txtTimestamp')) document.getElementById('txtTimestamp').innerText = now.toLocaleString();
+                    
+                    if (data.detections.length > 0) {
+                        const det = data.detections[0];
+                        
+                        // Wait for image to load to draw bbox
+                        mainImage.onload = () => {
+                            bboxOverlay.style.display = 'block';
+                            bboxOverlay.style.left = det.bbox.x + '%';
+                            bboxOverlay.style.top = det.bbox.y + '%';
+                            bboxOverlay.style.width = det.bbox.width + '%';
+                            bboxOverlay.style.height = det.bbox.height + '%';
+                            if(bboxLabel) bboxLabel.innerText = det.conf + '%';
+                        };
+                        
+                        // Update Texts
+                        if(document.getElementById('txtPlateNumber')) document.getElementById('txtPlateNumber').innerText = det.text.match(/.{1,4}/g)?.join(' ') || det.text;
+                        if(document.getElementById('txtRawOcr')) document.getElementById('txtRawOcr').innerText = det.text;
+                        if(document.getElementById('txtConf')) document.getElementById('txtConf').innerText = det.conf + '% confidence';
+                        if(document.getElementById('txtStatus')) document.getElementById('txtStatus').innerText = det.status;
+                        
+                        // Update Recent
+                        const recentHtml = `
+                            <div class="recent-item">
+                                <div>
+                                    <div class="recent-plate">${det.text}</div>
+                                    <div class="recent-time">${now.toLocaleTimeString()}</div>
+                                </div>
+                                <div class="recent-conf">${det.conf}%</div>
+                            </div>
+                        `;
+                        const recentList = document.getElementById('recentList');
+                        if(recentList) recentList.insertAdjacentHTML('afterbegin', recentHtml);
+                        
+                        totalCount++;
+                        if(document.getElementById('valTotal')) document.getElementById('valTotal').innerText = totalCount;
+                    } else {
+                        document.getElementById('txtPlateNumber').innerText = 'Not Found';
+                        document.getElementById('txtRawOcr').innerText = '-';
+                        document.getElementById('txtStatus').innerText = '-';
+                        document.getElementById('txtConf').innerText = '0%';
+                        bboxOverlay.style.display = 'none';
+                    }
+                }
+            } catch (err) {
+                console.error("Caught error:", err);
+                alert('Terdapat kesalahan (cek Console): ' + err.message);
+            } finally {
+                uploadWrapper.style.backgroundColor = 'transparent';
+                uploadForm.style.display = 'block';
+                loader.style.display = 'none';
+                // Move button down
+                uploadWrapper.style.alignItems = 'flex-end';
+                uploadWrapper.style.paddingBottom = '10px';
+            }
+        });
+    </script>
+</body>
+</html>
